@@ -1,1 +1,207 @@
-Hello World
+<!DOCTYPE html>
+<html>
+<head>
+  <title>The population forecast App</title>
+  <meta charset="utf-8">
+  <meta name="description" content="The population forecast App">
+  <meta name="author" content="Me">
+  <meta name="generator" content="slidify" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/default.css" media="all" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/phone.css" 
+    media="only screen and (max-device-width: 480px)" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/slidify.css" >
+  <link rel="stylesheet" href="libraries/highlighters/highlight.js/css/tomorrow.css" />
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->  <link rel=stylesheet href="./assets/css/ribbons.css"></link>
+
+  
+  <!-- Grab CDN jQuery, fall back to local if offline -->
+  <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js"></script>
+  <script>window.jQuery || document.write('<script src="libraries/widgets/quiz/js/jquery.js"><\/script>')</script> 
+  <script data-main="libraries/frameworks/io2012/js/slides" 
+    src="libraries/frameworks/io2012/js/require-1.0.8.min.js">
+  </script>
+  
+  
+
+</head>
+<body style="opacity: 0">
+  <slides class="layout-widescreen">
+    
+    <!-- LOGO SLIDE -->
+        <slide class="title-slide segue nobackground">
+  <hgroup class="auto-fadein">
+    <h1>The population forecast App</h1>
+    <h2>My first slidify presentation</h2>
+    <p>Me<br/>Datascientist wannabee</p>
+  </hgroup>
+  <article></article>  
+</slide>
+    
+
+    <!-- SLIDES -->
+    <slide class="" id="slide-1" style="background:;">
+  <hgroup>
+    <h2>What I want to show you in this presentation</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>Here ist my App on Shiny-Server</p>
+
+<p><a href="http://palatinaleon.shinyapps.io./CourseProject">PopulationApp</a></p>
+
+<p>The complete code of the App you will find on Github, just follow the <code>Links</code>, here I just present some important aspects</p>
+
+<ul class = "build incremental">
+<li><p>Of course UI.R <br>
+<a href="https://github.com/markuscl/CourseProject/blob/master/ui.R">Ui.R@Github</a></p></li>
+<li><p>Server.R <br>
+<a href="https://github.com/markuscl/CourseProject/blob/master/server.R">Server.R@Github</a></p></li>
+<li><p>global.R <br>
+<a href="https://github.com/markuscl/CourseProject/blob/master/global.R">global.R@Github</a></p></li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-2" style="background:;">
+  <hgroup>
+    <h2>UI.R</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>Here the most important for the drop-down list of the scenarios 
+as <code>select input</code> </p>
+
+<pre><code class="r">selectInput(&quot;variant&quot;, &quot;Choose forecast variant:&quot;, 
+            choices = c(&quot;Variante 1-W1 EJ&quot;, &quot;Variante 1-W2 EJ&quot;, &quot;Variante 2-W1 EJ&quot;,
+                         &quot;Variante 2-W2 EJ&quot;, &quot;Variante 3-W1 EJ&quot;, &quot;Variante 3-W2 EJ&quot;,
+                         &quot;Variante 4-W1 EJ&quot;, &quot;Variante 4-W2 EJ&quot;, &quot;Variante 5-W1 EJ&quot;,
+                         &quot;Variante 5-W2 EJ&quot;, &quot;Variante 6-W1 EJ&quot;, &quot;Variante 6-W2 EJ&quot;),
+                         selected = &quot;Variante 1-W1 EJ&quot;)     
+</code></pre>
+
+<p>The values for the multiple years can be started with an animated <code>sliderInput</code> 
+starting from 2009 until 2060</p>
+
+<pre><code class="r"> sliderInput(&quot;year&quot;, &quot;Year:&quot;, min=2009,max=2060, value= 2009, format = &quot;0000&quot;,
+                  step = 1, animate=
+                    animationOptions(interval=300, loop=TRUE))
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-3" style="background:;">
+  <hgroup>
+    <h2>Server.R</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>Here on the server side the data of the various forecasts is read in using the <code>xlsx</code> - package 
+which is pretty slow but only for demonstration purposes.<br>
+As the it should be possible to choose among various scenarios the data must be assigned reactive</p>
+
+<pre><code class="r">  dataSet_names &lt;- reactive({ 
+         dataset &lt;- read.xlsx(&quot;Data//VorausberechnungDeutschland.xls&quot;,
+                               input$variant, startRow =11, endRow=12)
+         dataset &lt;- sapply(dataset, function(x) as.character(x))
+         })
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-4" style="background:;">
+  <hgroup>
+    <h2>Server.R cont.</h2>
+  </hgroup>
+  <article data-timings="">
+    <p>In a final step the data is assigned to plot the population pyramid</p>
+
+<pre><code class="r">output$pyramid &lt;- renderPlot({   
+                sheet = dataSet_sheet()  
+                names = dataSet_names()  
+                names[105] &lt;- &quot;100 and older&quot;
+                names(sheet) &lt;- names      
+                colm = (input$year - 2009)*3 + 1
+                colf = (input$year - 2009)*3 + 2
+                py.Males &lt;- as.numeric(sheet[colm,5:105])
+                names(py.Males) &lt;- names[5:105]
+                py.Females &lt;- as.numeric(sheet[colf,5:105])    
+                pyramids(Left  = py.Males,   Llab  = &quot;Males&quot;, Right = py.Females, 
+                Rlab  =&quot;Females&quot;,   Laxis = seq(0,1000,100), Csize =0.8, Cstep =5,
+                main  = paste(&quot;German Population pyramid\n for Scenario :&quot;,
+                input$variant, &quot;\n (in 100 thousand)&quot;)) 
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-5" style="background:;">
+  <hgroup>
+    <h2>Example for year 2009 and Variante 1-W1 EJ</h2>
+  </hgroup>
+  <article data-timings="">
+    <pre><code class="r">pyramids(Left=py.Males,Llab=&quot;Males&quot;,Right=py.Females,Rlab=&quot;Females&quot;,
+Laxis=seq(0,1000,500),Csize=0.5, Cstep=10, main=text)
+</code></pre>
+
+<p><img src="assets/fig/unnamed-chunk-2.png" alt="plot of chunk unnamed-chunk-2"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+    <slide class="backdrop"></slide>
+  </slides>
+  <div class="pagination pagination-small" id='io2012-ptoc' style="display:none;">
+    <ul>
+      <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=1 title='What I want to show you in this presentation'>
+         1
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=2 title='UI.R'>
+         2
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=3 title='Server.R'>
+         3
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=4 title='Server.R cont.'>
+         4
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=5 title='Example for year 2009 and Variante 1-W1 EJ'>
+         5
+      </a>
+    </li>
+  </ul>
+  </div>  <!--[if IE]>
+    <script 
+      src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js">  
+    </script>
+    <script>CFInstall.check({mode: 'overlay'});</script>
+  <![endif]-->
+</body>
+  <!-- Load Javascripts for Widgets -->
+  
+  <!-- LOAD HIGHLIGHTER JS FILES -->
+  <script src="libraries/highlighters/highlight.js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <!-- DONE LOADING HIGHLIGHTER JS FILES -->
+   
+  </html>
