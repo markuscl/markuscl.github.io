@@ -1,107 +1,78 @@
---- 
-title       : The population forecast App
-subtitle    : My first slidify presentation
-author      : Me
-job         : Datascientist wannabee
-framework   : io2012        # {io2012, html5slides, shower, dzslides, ...}
-highlighter : highlight.js  # {highlight.js, prettify, highlight}
-hitheme     : tomorrow     # 
-widgets     : []            # {mathjax, quiz, bootstrap}
-mode        : selfcontained # {standalone, draft}
-knit        : slidify::knit2slides
-
+---
+title: "ML_Courseproject"
+output: html_document
 ---
 
-## What I want to show you in this presentation
-
-Here ist my App on Shiny-Server
-
-[PopulationApp](http://palatinaleon.shinyapps.io./CourseProject)
-
-
-The complete code of the App you will find on Github, just follow the `Links`, here I just present some important aspects
-
-> - Of course UI.R <br>
->  [Ui.R@Github](https://github.com/markuscl/CourseProject/blob/master/ui.R)
-
-> - Server.R <br>
-> [Server.R@Github](https://github.com/markuscl/CourseProject/blob/master/server.R)
-
-> - global.R <br>
-> [global.R@Github](https://github.com/markuscl/CourseProject/blob/master/global.R)
-
-
----
-## UI.R
-
-Here the most important for the drop-down list of the scenarios 
-as `select input` 
-
-```r
-selectInput("variant", "Choose forecast variant:", 
-            choices = c("Variante 1-W1 EJ", "Variante 1-W2 EJ", "Variante 2-W1 EJ",
-                         "Variante 2-W2 EJ", "Variante 3-W1 EJ", "Variante 3-W2 EJ",
-                         "Variante 4-W1 EJ", "Variante 4-W2 EJ", "Variante 5-W1 EJ",
-                         "Variante 5-W2 EJ", "Variante 6-W1 EJ", "Variante 6-W2 EJ"),
-                         selected = "Variante 1-W1 EJ")     
-```      
-
-The values for the multiple years can be started with an animated `sliderInput` 
-starting from 2009 until 2060
-
-```r
- sliderInput("year", "Year:", min=2009,max=2060, value= 2009, format = "0000",
-                  step = 1, animate=
-                    animationOptions(interval=300, loop=TRUE))
+This document contains my solution for the machine learning course project
+```{r echo=FALSE, warning=FALSE} 
+library(caret)
+load("ws_courseproject.RData")
 ```
 
----
-## Server.R
+A first summary of the data shows, that many variables have a lot of NA or other values., so I collect all them and exclude them from further analysis
 
-Here on the server side the data of the various forecasts is read in using the `xlsx` - package 
-which is pretty slow but only for demonstration purposes.<br>
-As the it should be possible to choose among various scenarios the data must be assigned reactive
-```r
-  dataSet_names <- reactive({ 
-         dataset <- read.xlsx("Data//VorausberechnungDeutschland.xls",
-                               input$variant, startRow =11, endRow=12)
-         dataset <- sapply(dataset, function(x) as.character(x))
-         })
-``` 
-
----
-## Server.R cont.
-
-In a final step the data is assigned to plot the population pyramid
-```r
-output$pyramid <- renderPlot({   
-                sheet = dataSet_sheet()  
-                names = dataSet_names()  
-                names[105] <- "100 and older"
-                names(sheet) <- names      
-                colm = (input$year - 2009)*3 + 1
-                colf = (input$year - 2009)*3 + 2
-                py.Males <- as.numeric(sheet[colm,5:105])
-                names(py.Males) <- names[5:105]
-                py.Females <- as.numeric(sheet[colf,5:105])    
-                pyramids(Left  = py.Males,   Llab  = "Males", Right = py.Females, 
-                Rlab  ="Females",   Laxis = seq(0,1000,100), Csize =0.8, Cstep =5,
-                main  = paste("German Population pyramid\n for Scenario :",
-                input$variant, "\n (in 100 thousand)")) 
+```{r} 
+summary(train_set)
 ```
 
----
-## Example for year 2009 and Variante 1-W1 EJ
+I collect all the ones with many NA and exclude them from further analysis. Furthermore I already exclude Username and the timestamp coz i assume that there should be no systematic influence of Username or timestamp on the classification. But i did not check this, maybe for some names that indicate a nationality it could make sense.
 
-```{r echo=FALSE}
-text =paste("German Population pyramid for Scenario :", "Variante 1-W1 EJ", "\n (in 100 thousand)")
-load("pyramid.RData"); py.Males <- as.numeric(sheet[1,5:105]) ; names(py.Males) <- names[5:105]; py.Females <- as.numeric(sheet[2,5:105])   
+
+```{r} 
+#too many NA
+alotNAandexkl <- c("max_roll_belt","max_picth_belt","min_roll_belt","min_pitch_belt","amplitude_roll_belt","amplitude_pitch_belt",
+                   "var_total_accel_belt","avg_roll_belt","stddev_roll_belt","var_roll_belt","avg_pitch_belt","stddev_pitch_belt",
+                   "var_pitch_belt","avg_yaw_belt","stddev_yaw_belt","var_yaw_belt","total_accel_arm","avg_roll_arm","stddev_roll_arm",
+                   "var_roll_arm","avg_pitch_arm","stddev_pitch_arm","var_pitch_arm","avg_yaw_arm","stddev_yaw_arm","var_yaw_arm",
+                   "max_roll_arm","max_picth_arm","max_yaw_arm","min_roll_arm","min_pitch_arm","min_yaw_arm","amplitude_roll_arm",
+                   "amplitude_pitch_arm","amplitude_yaw_arm","max_roll_dumbbell", "var_accel_dumbbell","avg_roll_dumbbell","var_roll_dumbbell",
+                   "min_roll_forearm","var_roll_forearm","avg_pitch_forearm","avg_yaw_forearm", "gyros_forearm_z",
+                   "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2","cvtd_timestamp")
+withoutNA <- names(train_set)
+withoutNA <- withoutNA[!withoutNA %in% alotNAandexkl]
+withoutNA
 ```
 
-```{r echo=TRUE } 
-pyramids(Left=py.Males,Llab="Males",Right=py.Females,Rlab="Females",
-Laxis=seq(0,1000,500),Csize=0.5, Cstep=10, main=text)
+
+Now in an analysis step I aggregate the remaining data by the clases and check the values. I create an identifier telling me if there is a strong
+variation between the different categories. I know that I need higher variation to be able to discriminate between the categories.
+For this I create an identifier saying that i keep only the variables or covariates that with a variation SD/MEAN *100 of more then 49% in respect of the mean 
+
+```{r} 
+analysis <- aggregate(.~ classe, data=train_set[,withoutNA], mean)
+analysis
+check <- sapply(analysis[,2:NCOL(analysis)], function(x)  sd(x) /mean(x)*100)
+ident <- names(check[check >49])
+ident
 ```
+
+Now I fit the model using linear discriminant analysis
+
+```{r} 
+modelFit <- train(train_set$classe~., data = train_set[,ident], method ="lda")
+modelFit
+```
+
+I create myself again a sample of the training data set to test the prediction of classification quality of the model
+
+```{r} 
+set.seed(123)
+newTest = createDataPartition(y=train_set$X, p=0.2, list = FALSE)
+newTest_set <- train_set[newTest,]
+ldclasse <- predict(modelFit,newTest_set[,ident])
+confusionMatrix(ldclasse, newTest_set$classe)
+```
+
+
+
+Final task is to predict the classes for the test set , as can be seen, all 20 data points would be classified in Category A
+```{r} 
+set.seed(123)
+ldclasse <- predict(modelFit,test_set[,ident])
+ldclasse
+```
+
+
 
 
 
